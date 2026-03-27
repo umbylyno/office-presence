@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+
+
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -8,6 +10,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      navigate("/dashboard");
+    }
+  });
+}, [navigate]);
+
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

@@ -31,7 +31,7 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold tracking-tight text-stone-900">
-            Office Presenze
+            Office Presence
           </h1>
           <p className="text-sm text-stone-500">
             Gestione presenze ed eventi speciali

@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
               <button
                 onClick={savePresence}
-                className="inline-flex rounded-2xl bg-stone-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-800"
+                className="inline-flex rounded-2xl bg-amber-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-800"
               >
                 Salva presenza
               </button>

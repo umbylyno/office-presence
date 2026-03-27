@@ -3,7 +3,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import CalendarPage from "./pages/CalendarPage";
-import AdminPage from "./pages/AdminPage"; 
+import AdminPage from "./pages/AdminPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
@@ -18,6 +18,8 @@ export default function App() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Route>
+
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

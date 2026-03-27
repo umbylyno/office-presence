@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
-
+import Navbar from "../components/Navbar";
 
 export default function DashboardPage() {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -13,8 +12,6 @@ export default function DashboardPage() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
-  const navigate = useNavigate();
-
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -53,82 +50,136 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-stone-50 text-stone-800">
-      <div className="mx-auto max-w-5xl">
-        <h1 className="text-3xl font-semibold">Dashboard presenze</h1>
-        <p className="mt-2 text-stone-500">Scegli la data in cui sarai in ufficio e condividi eventuali eventi speciali.</p>
-        
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-[0_8px_30px_rgba(120,53,15,0.08)]">
-            <h2 className="text-xl font-medium">Presenza</h2>
-            <input
-              type="date"
-              className="mt-4 w-full rounded-2xl border border-stone-200 px-4 py-3"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <textarea
-              className="mt-4 w-full rounded-2xl border border-stone-200 px-4 py-3"
-              placeholder="Nota facoltativa"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <button
-              onClick={savePresence}
-              className="mt-4 rounded-2xl bg-amber-500 px-5 py-3 text-white hover:bg-amber-600"
-            >
-              Salva presenza
-            </button>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-stone-100 text-stone-800">
+      <Navbar />
 
-          <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-[0_8px_30px_rgba(120,53,15,0.08)]">
-            <h2 className="text-xl font-medium">Evento speciale</h2>
-            <input
-              type="date"
-              className="mt-4 w-full rounded-2xl border border-stone-200 px-4 py-3"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <select
-              className="mt-4 w-full rounded-2xl border border-stone-200 px-4 py-3"
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value)}
-            >
-              <option value="compleanno">Compleanno</option>
-              <option value="onomastico">Onomastico</option>
-              <option value="cause_varie">Cause varie</option>
-            </select>
-            <select
-              className="mt-4 w-full rounded-2xl border border-stone-200 px-4 py-3"
-              value={offerType}
-              onChange={(e) => setOfferType(e.target.value)}
-            >
-              <option value="in_loco">Offerta in loco</option>
-              <option value="da_casa">Offerta da casa</option>
-            </select>
-            <input
-              className="mt-4 w-full rounded-2xl border border-stone-200 px-4 py-3"
-              placeholder="Titolo evento"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <button
-              onClick={saveEvent}
-              className="mt-4 rounded-2xl bg-orange-500 px-5 py-3 text-white hover:bg-orange-600"
-            >
-              Salva evento
-            </button>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-        <button onClick={() => navigate("/calendar")} className="rounded-2xl border border-stone-200 bg-white px-5 py-3 text-sm font-medium text-stone-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-50">
-              Vai al calendario presenze
-        </button>
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <div className="mb-8 max-w-2xl">
+          <h2 className="text-3xl font-semibold tracking-tight text-stone-900">
+            Dashboard presenze
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            Scegli la data in cui sarai in ufficio e condividi eventuali eventi speciali.
+          </p>
         </div>
 
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-stone-900">Presenza</h3>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Nota
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Es. arrivo alle 9:30"
+                  rows={4}
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={savePresence}
+                className="w-full rounded-2xl bg-stone-900 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-stone-800"
+              >
+                Salva presenza
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-stone-900">
+              Evento speciale
+            </h3>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Tipo evento
+                </label>
+                <select
+                  value={eventType}
+                  onChange={(e) => setEventType(e.target.value)}
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                >
+                  <option value="compleanno">Compleanno</option>
+                  <option value="onomastico">Onomastico</option>
+                  <option value="varie">Cause varie</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Offerta
+                </label>
+                <select
+                  value={offerType}
+                  onChange={(e) => setOfferType(e.target.value)}
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                >
+                  <option value="in_loco">Offerta in loco</option>
+                  <option value="da_casa">Offerta da casa</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-stone-700">
+                  Titolo
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Es. Colazione per tutti"
+                  className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none transition focus:border-amber-400 focus:bg-white"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={saveEvent}
+                className="w-full rounded-2xl bg-amber-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-amber-500"
+              >
+                Salva evento
+              </button>
+            </div>
+          </section>
         </div>
 
-        {message && <p className="mt-4 text-sm text-stone-600">{message}</p>}
-      </div>
+        {message && (
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {message}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

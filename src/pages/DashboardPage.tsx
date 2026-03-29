@@ -1,185 +1,240 @@
-import { useEffect, useState } from "react";
-import { format } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  format,
+  isSameMonth,
+  isToday,
+  startOfMonth,
+  startOfWeek,
+  endOfWeek,
+  isWeekend,
+} from "date-fns";
+import { it } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
 
-export default function DashboardPage() {
-  const today = format(new Date(), "yyyy-MM-dd");
+type PresenceRow = {
+  user_id: string;
+  presence_date: string;
+};
 
-  const [date, setDate] = useState(today);
-  const [note, setNote] = useState("");
-  const [eventType, setEventType] = useState("compleanno");
-  const [offerType, setOfferType] = useState("in_loco");
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState("");
+type EventRow = {
+  id: string;
+  event_date: string;
+};
+
+export default function DashboardPage() {
+  const navigate = useNavigate();
+  const today = new Date();
+
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(today));
+  const [presenceCounts, setPresenceCounts] = useState<Record<string, number>>({});
+  const [specialEventDays, setSpecialEventDays] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [myPresenceDays, setMyPresenceDays] = useState<Record<string, boolean>>({});
   const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const monthLabel = useMemo(
+    () => format(currentMonth, "MMMM yyyy", { locale: it }),
+    [currentMonth]
+  );
+
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
+    const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-    });
+    async function bootstrap() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setUserId(user?.id ?? null);
+    }
+
+    bootstrap();
   }, []);
 
-  async function savePresence() {
-    if (!userId) return;
+  useEffect(() => {
+    async function loadMonthData() {
+      setLoading(true);
 
-    const { error } = await supabase.from("presences").upsert(
-      {
-        user_id: userId,
-        presence_date: date,
-        note: note || null,
-      },
-      { onConflict: "user_id,presence_date" }
-    );
+      const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+      const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-    setMessage(error ? error.message : "Presenza salvata");
-  }
+      const [presenceResult, eventResult] = await Promise.all([
+        supabase
+          .from("presences")
+          .select("user_id, presence_date")
+          .gte("presence_date", monthStart)
+          .lte("presence_date", monthEnd),
+        supabase
+          .from("special_events")
+          .select("id, event_date")
+          .gte("event_date", monthStart)
+          .lte("event_date", monthEnd),
+      ]);
 
-  async function saveEvent() {
-    if (!userId) return;
+      const counts: Record<string, number> = {};
+      const mine: Record<string, boolean> = {};
+      const eventsMap: Record<string, boolean> = {};
 
-    const { error } = await supabase.from("special_events").insert({
-      user_id: userId,
-      event_date: date,
-      event_type: eventType,
-      offer_type: offerType,
-      title: title || null,
-      description: null,
-    });
+      (presenceResult.data as PresenceRow[] | null)?.forEach((presence) => {
+        counts[presence.presence_date] = (counts[presence.presence_date] ?? 0) + 1;
 
-    setMessage(error ? error.message : "Evento salvato");
-  }
+        if (userId && presence.user_id === userId) {
+          mine[presence.presence_date] = true;
+        }
+      });
+
+      (eventResult.data as EventRow[] | null)?.forEach((event) => {
+        eventsMap[event.event_date] = true;
+      });
+
+      setPresenceCounts(counts);
+      setMyPresenceDays(mine);
+      setSpecialEventDays(eventsMap);
+      setLoading(false);
+    }
+
+    loadMonthData();
+  }, [currentMonth, userId]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-amber-50 text-stone-800">
+    <>
       <Navbar />
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
-            Dashboard presenze
-          </h1>
-          <p className="mt-2 text-sm text-stone-600">
-            Scegli la data in cui sarai in ufficio e condividi eventuali eventi
-            speciali.
-          </p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="min-w-0 rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm backdrop-blur">
-            <h2 className="text-lg font-semibold text-stone-900">Presenza</h2>
-
-            <div className="mt-5 space-y-4">
-              <div className="min-w-0">
-                <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Data
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="block w-full min-w-0 box-border appearance-none rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-amber-400 focus:bg-white"
-                />
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.10),_transparent_32%),linear-gradient(to_bottom,_#faf7f2,_#f5f1ea)] px-4 pb-24 pt-4 sm:px-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+          <section className="rounded-[28px] border border-stone-200/80 bg-white/92 p-5 shadow-[0_12px_32px_rgba(28,25,23,0.06)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
+                  Dashboard
+                </p>
+                <h1 className="mt-1 text-2xl font-semibold text-stone-900">
+                  Chi ci sarà in ufficio
+                </h1>
+                <p className="mt-2 max-w-md text-sm text-stone-600">
+                  Tocca un giorno per vedere i dettagli e confermare subito la tua
+                  presenza.
+                </p>
               </div>
 
-              <div className="min-w-0">
-                <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Nota
-                </label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Es. arrivo alle 9:30"
-                  rows={4}
-                  className="block w-full min-w-0 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-amber-400 focus:bg-white"
-                />
+              <div className="hidden rounded-2xl bg-amber-50 px-3 py-2 text-right text-xs text-amber-900 sm:block">
+                <div className="font-medium">Oggi</div>
+                <div>{format(today, "d MMM", { locale: it })}</div>
               </div>
-
-              <button
-                onClick={savePresence}
-                className="inline-flex rounded-2xl bg-amber-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-stone-800"
-              >
-                Salva presenza
-              </button>
             </div>
           </section>
 
-          <section className="min-w-0 rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm backdrop-blur">
-            <h2 className="text-lg font-semibold text-stone-900">
-              Evento speciale
-            </h2>
+          <section className="rounded-[28px] border border-stone-200/80 bg-white/96 p-4 shadow-[0_10px_28px_rgba(28,25,23,0.05)]">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setCurrentMonth((prev) => addMonths(prev, -1))}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border border-stone-200 bg-stone-50 px-3 text-lg font-medium text-stone-700 transition hover:bg-stone-100"
+                aria-label="Mese precedente"
+              >
+                ←
+              </button>
 
-            <div className="mt-5 space-y-4">
-              <div className="min-w-0">
-                <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Data
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="block w-full min-w-0 box-border appearance-none rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-amber-400 focus:bg-white"
-                />
-              </div>
-
-              <div className="min-w-0">
-                <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Tipo evento
-                </label>
-                <select
-                  value={eventType}
-                  onChange={(e) => setEventType(e.target.value)}
-                  className="block w-full min-w-0 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-amber-400 focus:bg-white"
-                >
-                  <option value="compleanno">Compleanno</option>
-                  <option value="onomastico">Onomastico</option>
-                  <option value="varie">Cause varie</option>
-                </select>
-              </div>
-
-              <div className="min-w-0">
-                <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Offerta
-                </label>
-                <select
-                  value={offerType}
-                  onChange={(e) => setOfferType(e.target.value)}
-                  className="block w-full min-w-0 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-amber-400 focus:bg-white"
-                >
-                  <option value="in_loco">Offerta in loco</option>
-                  <option value="da_casa">Offerta da casa</option>
-                </select>
-              </div>
-
-              <div className="min-w-0">
-                <label className="mb-2 block text-sm font-medium text-stone-700">
-                  Titolo
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Es. Colazione per tutti"
-                  className="block w-full min-w-0 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-amber-400 focus:bg-white"
-                />
+              <div className="text-center">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                  Calendario
+                </div>
+                <div className="text-base font-semibold capitalize text-stone-900">
+                  {monthLabel}
+                </div>
               </div>
 
               <button
-                onClick={saveEvent}
-                className="inline-flex rounded-2xl bg-amber-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-amber-700"
+                type="button"
+                onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border border-stone-200 bg-stone-50 px-3 text-lg font-medium text-stone-700 transition hover:bg-stone-100"
+                aria-label="Mese successivo"
               >
-                Salva evento
+                →
               </button>
             </div>
+
+            <div className="mb-3 grid grid-cols-7 gap-2">
+              {["L", "M", "M", "G", "V", "S", "D"].map((day, index) => (
+                <div
+                  key={`${day}-${index}`}
+                  className={`text-center text-[11px] font-semibold uppercase tracking-[0.18em] ${
+                    index >= 5 ? "text-red-500" : "text-stone-400"
+                  }`}
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day) => {
+                const isoDate = format(day, "yyyy-MM-dd");
+                const count = presenceCounts[isoDate] ?? 0;
+                const hasEvent = !!specialEventDays[isoDate];
+                const isMine = !!myPresenceDays[isoDate];
+                const isCurrentMonth = isSameMonth(day, currentMonth);
+                const isCurrentDay = isToday(day);
+                const weekend = isWeekend(day);
+
+                return (
+                  <button
+                    key={isoDate}
+                    type="button"
+                    onClick={() => navigate(`/calendar/${isoDate}`)}
+                    className={[
+                      "calendar-day",
+                      !isCurrentMonth ? "calendar-day--outside" : "",
+                      hasEvent ? "calendar-day--event" : "",
+                      isMine ? "calendar-day--mine" : "",
+                      isCurrentDay ? "calendar-day--today" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-label={`Apri il giorno ${format(day, "d MMMM yyyy", {
+                      locale: it,
+                    })}`}
+                  >
+                    <span
+                      className={[
+                        "calendar-day__number",
+                        !isCurrentMonth ? "calendar-day__number--outside" : "",
+                        weekend ? "calendar-day__number--weekend" : "",
+                        isCurrentDay ? "calendar-day__number--today" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {format(day, "d")}
+                    </span>
+
+                    {count > 0 && (
+                      <span className="calendar-day__count">{count}</span>
+                    )}
+
+                    {hasEvent && <span className="calendar-day__event-dot" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {loading && (
+              <p className="mt-4 text-sm text-stone-500">Caricamento calendario...</p>
+            )}
           </section>
         </div>
-
-        {message && (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {message}
-          </div>
-        )}
       </main>
-    </div>
+    </>
   );
 }

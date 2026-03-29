@@ -79,88 +79,67 @@ export default function Navbar() {
   }
 
   function isActive(path: string) {
-    if (path === "/") {
-      return location.pathname === "/" || location.pathname === "/dashboard";
+    if (path === "/dashboard") {
+      return (
+        location.pathname === "/" ||
+        location.pathname === "/dashboard" ||
+        location.pathname.startsWith("/calendar/")
+      );
     }
 
     return location.pathname === path;
   }
 
   const navBase =
-    "rounded-xl border px-4 py-2 text-sm font-medium transition whitespace-nowrap";
+    "flex min-h-[44px] items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-medium transition whitespace-nowrap";
   const navActive =
-    "border-amber-200 bg-amber-100 text-amber-900 ring-2 ring-amber-100";
+    "border-amber-200 bg-amber-100 text-amber-900 shadow-sm";
   const navIdle =
     "border-transparent text-stone-600 hover:bg-stone-100 hover:text-stone-900";
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b border-stone-200/80 bg-white/80 backdrop-blur-xl transition-transform duration-300 ease-out ${
+      className={`sticky top-0 z-30 border-b border-stone-200/80 bg-stone-50/90 backdrop-blur transition-transform duration-300 ${
         visible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="mx-auto max-w-5xl px-4 py-3 sm:px-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="text-left"
-            >
-              <div className="text-sm font-semibold tracking-wide text-stone-900">
-                Office Presence
-              </div>
-              <div className="text-xs text-stone-500">
-                {fullName ? `Ciao, ${fullName}` : "Calendario condiviso ufficio"}
-              </div>
-            </button>
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="shrink-0 rounded-2xl text-left transition hover:opacity-90"
+          aria-label="Vai alla dashboard"
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700">
+            Office
           </div>
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-            <nav className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className={`${navBase} ${isActive("/") ? navActive : navIdle}`}
-              >
-                Dashboard
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate("/calendar")}
-                className={`${navBase} ${
-                  isActive("/calendar") ? navActive : navIdle
-                }`}
-              >
-                Calendario
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate("/admin")}
-                className={`${navBase} ${
-                  isActive("/admin") ? navActive : navIdle
-                }`}
-              >
-                Admin
-              </button>
-            </nav>
-
-            <div className="h-px bg-stone-200 md:hidden" />
-
-            <div className="flex md:shrink-0 md:justify-end">
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="w-full rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto md:min-w-[110px]"
-              >
-                {loggingOut ? "Logout..." : "Logout"}
-              </button>
-            </div>
+          <div className="text-sm font-semibold text-stone-900">
+            {fullName ? `Ciao, ${fullName.split(" ")[0]}` : "Presenze"}
           </div>
-        </div>
+        </button>
+
+        <nav className="flex items-center gap-2 overflow-x-auto">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className={`${navBase} ${isActive("/dashboard") ? navActive : navIdle}`}
+          >
+            Dashboard
+          </button>
+
+          <button
+            onClick={() => navigate("/admin")}
+            className={`${navBase} ${isActive("/admin") ? navActive : navIdle}`}
+          >
+            Admin
+          </button>
+
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex min-h-[44px] items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loggingOut ? "Esco..." : "Esci"}
+          </button>
+        </nav>
       </div>
     </header>
   );

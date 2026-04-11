@@ -99,26 +99,35 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-30 border-b border-stone-200/80 bg-stone-50/90 backdrop-blur transition-transform duration-300 ${
-        visible ? "translate-y-0" : "-translate-y-full"
+      className={`sticky top-0 z-40 px-4 py-3 transition-all duration-200 ${
+        visible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
       }`}
     >
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-[24px] border border-stone-200/80 bg-white/85 px-3 py-3 shadow-[0_12px_40px_rgba(28,25,23,0.08)] backdrop-blur md:px-4">
         <button
+          type="button"
           onClick={() => navigate("/dashboard")}
-          className="shrink-0 rounded-2xl text-left transition hover:opacity-90"
+          className="flex min-w-0 items-center gap-3 rounded-2xl px-2 py-1 text-left transition hover:bg-stone-100"
           aria-label="Vai alla dashboard"
         >
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700">
-            Office
-          </div>
-          <div className="text-sm font-semibold text-stone-900">
-            {fullName ? `Ciao, ${fullName.split(" ")[0]}` : "Presenze"}
+          <img
+            src="public/favicon.png"
+            alt="Logo Office Presence"
+            className="h-10 w-10 "
+          />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold leading-tight text-stone-900">
+              Office Presence
+            </div>
+            <div className="truncate text-xs text-stone-500">
+              {fullName || "Calendario ufficio"}
+            </div>
           </div>
         </button>
 
         <nav className="flex items-center gap-2 overflow-x-auto">
           <button
+            type="button"
             onClick={() => navigate("/dashboard")}
             className={`${navBase} ${isActive("/dashboard") ? navActive : navIdle}`}
           >
@@ -126,6 +135,7 @@ export default function Navbar() {
           </button>
 
           <button
+            type="button"
             onClick={() => navigate("/admin")}
             className={`${navBase} ${isActive("/admin") ? navActive : navIdle}`}
           >
@@ -133,11 +143,12 @@ export default function Navbar() {
           </button>
 
           <button
+            type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className="flex min-h-[44px] items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex min-h-[44px] items-center justify-center rounded-2xl border border-stone-200 px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loggingOut ? "Esco..." : "Esci"}
+            {loggingOut ? "Uscita..." : "Esci"}
           </button>
         </nav>
       </div>

@@ -111,7 +111,7 @@ export default function Navbar() {
           aria-label="Vai alla dashboard"
         >
           <img
-            src="public/favicon.png"
+            src="favicon.png"
             alt="Logo Office Presence"
             className="h-10 w-10 "
           />

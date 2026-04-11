@@ -46,7 +46,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-orange-50 to-amber-50">
       <div className="w-full max-w-md rounded-3xl border border-stone-200 bg-white/80 p-8 shadow-[0_8px_30px_rgba(120,53,15,0.08)] backdrop-blur">
       <img
-              src="public/favicon.png"
+              src="favicon.png"
               alt="Logo Office Presence"
               className="h-40 w-40 center mx-auto"
           

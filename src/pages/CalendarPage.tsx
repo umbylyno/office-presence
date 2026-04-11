@@ -127,9 +127,9 @@ export default function CalendarPage() {
       const loaded = (eventResult.data as EventRow[] | null) ?? [];
       setEvents(loaded);
       setMyEventForDay(loaded.find((ev) => ev.user_id === userId) ?? null);
-      const myEv = ((eventResult.data as EventRow[] | null) ?? []).find(
-      (ev) => (ev.profiles as any)?.user_id === userId
-      ) ?? null;
+      //const myEv = ((eventResult.data as EventRow[] | null) ?? []).find(
+      //(ev) => (ev.profiles as any)?.user_id === userId
+      //) ?? null;
       // fallback: cerca per user_id direttamente se il join non lo espone
       setMyEventForDay(null); // reset; verrà rilevato dalla lista events
       setLoading(false);

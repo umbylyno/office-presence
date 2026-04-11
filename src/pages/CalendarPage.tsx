@@ -24,6 +24,7 @@ type PresenceRow = {
 
 type EventRow = {
   id: string;
+  user_id: string;
   event_type: string;
   offer_type: string;
   title: string | null;
@@ -49,6 +50,19 @@ export default function CalendarPage() {
   const [saving, setSaving] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+
+  
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventTitle, setEventTitle] = useState("");
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [myEventForDay, setMyEventForDay] = useState<EventRow | null>(null);
+
+  const [eventType, setEventType] = useState<"compleanno" | "onomastico" | "cause_varie">("cause_varie");
+
+  const [swipingEventId, setSwipingEventId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const swipeStartX = useRef(0);
+  const swipeActive = useRef(false);
 
   const dateLabel = useMemo(() => {
     try {
@@ -102,7 +116,7 @@ export default function CalendarPage() {
         supabase
           .from("special_events")
           .select(
-            "id, event_type, offer_type, title, description, profiles(full_name, username)"
+            "id, user_id, event_type, offer_type, title, description, profiles(full_name, username)"
           )
           .eq("event_date", selectedDate)
           .order("id", { ascending: true }),
@@ -110,6 +124,14 @@ export default function CalendarPage() {
 
       setPresences((presenceResult.data as PresenceRow[] | null) ?? []);
       setEvents((eventResult.data as EventRow[] | null) ?? []);
+      const loaded = (eventResult.data as EventRow[] | null) ?? [];
+      setEvents(loaded);
+      setMyEventForDay(loaded.find((ev) => ev.user_id === userId) ?? null);
+      const myEv = ((eventResult.data as EventRow[] | null) ?? []).find(
+      (ev) => (ev.profiles as any)?.user_id === userId
+      ) ?? null;
+      // fallback: cerca per user_id direttamente se il join non lo espone
+      setMyEventForDay(null); // reset; verrà rilevato dalla lista events
       setLoading(false);
     }
 
@@ -193,6 +215,96 @@ export default function CalendarPage() {
     setSaving(false);
   }
 
+  async function handleEventSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  if (!userId || savingEvent || !eventTitle.trim()) return;
+
+  setSavingEvent(true);
+
+  const { data, error } = await supabase
+    .from("special_events")
+    .insert({
+      user_id: userId,
+      event_date: selectedDate,
+      title: eventTitle.trim(),
+      event_type: eventType,
+      offer_type: "in_loco",
+    })
+    .select("id, event_type, offer_type, title, description, profiles(full_name, username)")
+    .single();
+
+    console.log("INSERT result:", { data, error }); // <-- temporaneo
+
+  if (!error && data) {
+  const newEvent: EventRow = {
+    id: data.id,
+    user_id: userId,
+    event_type: data.event_type,
+    offer_type: data.offer_type,
+    title: data.title,
+    description: data.description,
+    profiles: Array.isArray(data.profiles) ? data.profiles[0] ?? null : data.profiles,
+  };
+  setEvents((current) => [...current, newEvent]);
+  setMyEventForDay(newEvent);
+  showFeedback("Evento salvato");
+}
+
+  setEventTitle("");
+  setShowEventModal(false);
+  setSavingEvent(false);
+}
+
+async function handleEventDelete() {
+  if (!userId || !myEventForDay) return;
+
+  const { error } = await supabase
+    .from("special_events")
+    .delete()
+    .eq("id", myEventForDay.id);
+
+  if (!error) {
+    setEvents((current) => current.filter((ev) => ev.id !== myEventForDay.id));
+    setMyEventForDay(null);
+    showFeedback("Evento rimosso");
+  }
+}
+
+function onTouchStart(e: React.TouchEvent, id: string) {
+  swipeStartX.current = e.touches[0].clientX;
+  swipeActive.current = true;
+  setSwipingEventId(id);
+  setSwipeOffset(0);
+}
+
+function onTouchMove(e: React.TouchEvent) {
+  if (!swipeActive.current) return;
+  const delta = e.touches[0].clientX - swipeStartX.current;
+  if (delta < 0) setSwipeOffset(Math.max(delta, -80));
+}
+
+function onTouchEnd() {
+  swipeActive.current = false;
+  if (swipeOffset <= -60) {
+    // soglia raggiunta: mantieni aperto
+  } else {
+    setSwipeOffset(0);
+    setSwipingEventId(null);
+  }
+}
+
+async function handleEventDeleteById(id: string) {
+  const { error } = await supabase.from("special_events").delete().eq("id", id);
+  if (!error) {
+    setEvents((current) => current.filter((ev) => ev.id !== id));
+    if (myEventForDay?.id === id) setMyEventForDay(null);
+    setSwipingEventId(null);
+    setSwipeOffset(0);
+    showFeedback("Evento rimosso");
+  }
+}
+
+
   return (
     <>
       <Navbar />
@@ -256,6 +368,21 @@ export default function CalendarPage() {
                   ? "Non ci sarò"
                   : "Ci sarò"}
               </button>
+
+              {canManagePresence && userId && (
+              <button
+                type="button"
+                onClick={() => myEventForDay ? handleEventDelete() : setShowEventModal(true)}
+                title={myEventForDay ? "Rimuovi evento speciale" : "Aggiungi evento speciale"}
+                className={`flex min-h-[52px] min-w-[52px] items-center justify-center rounded-[20px] border text-lg transition ${
+                  myEventForDay
+                    ? "border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200"
+                    : "border-stone-200 bg-stone-50 text-stone-900 hover:bg-amber-50 hover:border-amber-300"
+                }`}
+                >
+                  ★
+    </button>
+  )}
             </div>
           </section>
 
@@ -330,11 +457,27 @@ export default function CalendarPage() {
               <div className="space-y-3">
                 {events.map((event) => {
                   const profile = event.profiles;
+                  const isSwiping = swipingEventId === event.id;
+                  const offset = isSwiping ? swipeOffset : 0;
+                  const showDelete = isSwiping && offset <= -60;
 
-                  return (
+                return (
+                  <div key={event.id} className="relative overflow-hidden rounded-2xl">
+                    {/* Delete background */}
+                    <div className="absolute inset-y-0 right-0 flex items-center justify-center w-20 bg-red-500 rounded-2xl">
+                      <span className="text-white text-xs font-semibold">Elimina</span>
+                    </div>
+
+                    {/* Card */}
                     <article
-                      key={event.id}
-                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+                      onTouchStart={(e) => onTouchStart(e, event.id)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={onTouchEnd}
+                      style={{
+                        transform: `translateX(${offset}px)`,
+                        transition: swipeActive.current ? "none" : "transform 220ms ease",
+                      }}
+                      className="relative border border-amber-200 bg-amber-50 px-4 py-3 rounded-2xl"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -352,19 +495,23 @@ export default function CalendarPage() {
                           {event.offer_type === "in_loco" ? "In loco" : "Da casa"}
                         </span>
                       </div>
-
-                      <p className="mt-2 text-sm text-stone-600">
-                        {event.event_type}
-                      </p>
-
+                      <p className="mt-2 text-sm text-stone-600">{event.event_type}</p>
                       {event.description && (
-                        <p className="mt-2 text-sm text-stone-600">
-                          {event.description}
-                        </p>
+                        <p className="mt-2 text-sm text-stone-600">{event.description}</p>
                       )}
                     </article>
-                  );
-                })}
+
+                    {/* Tap su "Elimina" quando swipe aperto */}
+                    {showDelete && (
+                      <button
+                        className="absolute inset-y-0 right-0 w-20 z-10"
+                        onClick={() => handleEventDeleteById(event.id)}
+                        aria-label="Elimina evento"
+                      />
+                    )}
+                  </div>
+                );
+              })}
               </div>
             )}
           </section>
@@ -376,6 +523,63 @@ export default function CalendarPage() {
             <div className="presence-feedback__text">{feedbackText}</div>
           </div>
         )}
+
+        {showEventModal && (
+  <div
+    className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 backdrop-blur-sm sm:items-center"
+    onClick={() => setShowEventModal(false)}
+  >
+    <div
+      className="w-full max-w-md rounded-t-[28px] border border-stone-200 bg-white p-6 shadow-xl sm:rounded-[28px]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 className="text-base font-semibold text-stone-900">Nuovo evento speciale</h2>
+      <p className="mt-1 text-sm text-stone-500">
+        {format(parsedSelectedDate, "EEEE d MMMM", { locale: it })}
+      </p>
+
+      <form onSubmit={handleEventSubmit} className="mt-4 flex flex-col gap-3">
+        <input
+          autoFocus
+          type="text"
+          placeholder="Titolo evento (es. Compleanno di Claudio Amato)"
+          value={eventTitle}
+          onChange={(e) => setEventTitle(e.target.value)}
+          className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none"
+          maxLength={80}
+        />
+
+        <select
+          value={eventType}
+          onChange={(e) => setEventType(e.target.value as "compleanno" | "onomastico" | "cause_varie")}
+          className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-900 focus:border-amber-400 focus:outline-none"
+        >
+          <option value="cause_varie">Cause varie</option>
+          <option value="compleanno">Compleanno</option>
+          <option value="onomastico">Onomastico</option>
+        </select>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowEventModal(false)}
+            className="flex-1 min-h-[44px] rounded-2xl border border-stone-200 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+          >
+            Annulla
+          </button>
+          <button
+            type="submit"
+            disabled={savingEvent || !eventTitle.trim()}
+            className="flex-1 min-h-[44px] rounded-2xl bg-amber-500 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
+          >
+            {savingEvent ? "Salvo..." : "Salva"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+        
       </main>
     </>
   );

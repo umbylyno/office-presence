@@ -11,8 +11,9 @@ import {
   endOfWeek,
   isWeekend,
   startOfDay,
+  isSameDay,
 } from "date-fns";
-import { Trophy, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Trophy, ChevronLeft, ChevronRight, X, Sun, Cloud, CloudRain } from "lucide-react";
 import { it } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -73,6 +74,15 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [todayWeather, setTodayWeather] = useState<{ temp: number; code: number } | null>(null);
+
+  // Helper per l'icona rapida in Dashboard
+  const getWeatherIcon = (code: number) => {
+    if (code === 0) return <Sun className="h-4 w-4 text-amber-500" />;
+    if (code >= 1 && code <= 3) return <Cloud className="h-4 w-4 text-stone-400" />;
+    if (code >= 51) return <CloudRain className="h-4 w-4 text-blue-400" />;
+    return <Sun className="h-4 w-4 text-amber-500" />;
+  };
 
   const monthLabel = useMemo(
     () => format(currentMonth, "MMMM yyyy", { locale: it }),
@@ -95,6 +105,26 @@ export default function DashboardPage() {
     }
 
     bootstrap();
+  }, []);
+
+  useEffect(() => {
+    async function fetchCurrentWeather() {
+      try {
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=40.8459&longitude=14.2677&current=temperature_2m,weather_code&timezone=Europe/Rome`
+        );
+        const data = await res.json();
+        if (data.current) {
+          setTodayWeather({
+            temp: data.current.temperature_2m,
+            code: data.current.weather_code,
+          });
+        }
+      } catch (e) {
+        console.error("Errore meteo dashboard:", e);
+      }
+    }
+    fetchCurrentWeather();
   }, []);
 
   useEffect(() => {
@@ -211,7 +241,15 @@ export default function DashboardPage() {
 
               <div className="hidden rounded-2xl bg-amber-50 px-3 py-2 text-right text-xs text-amber-900 sm:block">
                 <div className="font-medium">Oggi</div>
-                <div>{format(today, "d MMM", { locale: it })}</div>
+                <div className="flex items-center justify-end gap-2">
+                  {todayWeather && (
+                    <div className="flex items-center gap-1 border-r border-amber-200 pr-2">
+                      {getWeatherIcon(todayWeather.code)}
+                      <span className="font-bold">{Math.round(todayWeather.temp)}°C</span>
+                    </div>
+                  )}
+                  <div className="capitalize">{format(today, "d MMM", { locale: it })}</div>
+                </div>
               </div>
             </div>
           </section>

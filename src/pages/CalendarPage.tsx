@@ -37,6 +37,20 @@ type EventRow = {
   } | null;
 };
 
+// Dati di test locali per sviluppo (devono corrispondere a quelli in DashboardPage)
+const mockYearMonth = format(new Date(), "yyyy-MM");
+const MOCK_PRESENCES_LIST = [
+  { id: "m1", user_id: "u1", presence_date: `${mockYearMonth}-01`, profiles: { full_name: "Marco Verdi", username: "marco_v" } },
+  { id: "m2", user_id: "u1", presence_date: `${mockYearMonth}-02`, profiles: { full_name: "Marco Verdi", username: "marco_v" } },
+  { id: "m3", user_id: "u2", presence_date: `${mockYearMonth}-01`, profiles: { full_name: "Sara Bianchi", username: "sara_b" } },
+  { id: "m4", user_id: "u3", presence_date: `${mockYearMonth}-03`, profiles: { full_name: "Luca Neri", username: "luca_n88" } },
+  { id: "m5", user_id: "u1", presence_date: `${mockYearMonth}-15`, profiles: { full_name: "Marco Verdi", username: "marco_v" } },
+  { id: "m6", user_id: "u4", presence_date: `${mockYearMonth}-20`, profiles: { full_name: "Elena Gallo", username: "elena_g" } },
+  { id: "m7", user_id: "u2", presence_date: `${mockYearMonth}-22`, profiles: { full_name: "Sara Bianchi", username: "sara_b" } },
+  { id: "m8", user_id: "u2", presence_date: `${mockYearMonth}-25`, profiles: { full_name: "Sara Bianchi", username: "sara_b" } },
+  { id: "m9", user_id: "u5", presence_date: `${mockYearMonth}-28`, profiles: { full_name: "Alessandro Rossi", username: "ale_rossi" } },
+];
+
 export default function CalendarPage() {
   const navigate = useNavigate();
   const { date } = useParams<{ date: string }>();
@@ -128,7 +142,19 @@ export default function CalendarPage() {
 
       console.log("CalendarPage - presenceResult.data:", presenceResult.data);
       console.log("CalendarPage - presenceResult.error:", presenceResult.error);
-      setPresences((presenceResult.data as PresenceRow[] | null) ?? []);
+
+      let loadedPresences = (presenceResult.data as PresenceRow[] | null) ?? [];
+      
+      // INIEZIONE DATI MOCK IN SVILUPPO
+      const isDev = import.meta.env.DEV;
+      if (isDev && loadedPresences.length === 0) {
+        console.log("🛠️ Mock Mode (Calendar): Caricamento dati di test per la data", selectedDate);
+        loadedPresences = MOCK_PRESENCES_LIST.filter(
+          (p) => p.presence_date === selectedDate
+        ) as unknown as PresenceRow[];
+      }
+
+      setPresences(loadedPresences);
       const loaded = (eventResult.data as EventRow[] | null) ?? [];
       setEvents(loaded);
       setMyEventForDay(loaded.find((ev) => ev.user_id === userId) ?? null);

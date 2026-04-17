@@ -10,6 +10,7 @@ import {
   startOfWeek,
   endOfWeek,
   isWeekend,
+  startOfDay,
 } from "date-fns";
 import { it } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -19,11 +20,22 @@ import Navbar from "../components/Navbar";
 type PresenceRow = {
   user_id: string;
   presence_date: string;
+  profiles: {
+    full_name: string | null;
+    username: string | null;
+  } | null;
 };
 
 type EventRow = {
   id: string;
   event_date: string;
+};
+
+type LeaderboardEntry = {
+  user_id: string;
+  full_name: string | null;
+  username: string | null;
+  count: number;
 };
 
 export default function DashboardPage() {
@@ -36,6 +48,7 @@ export default function DashboardPage() {
     {}
   );
   const [myPresenceDays, setMyPresenceDays] = useState<Record<string, boolean>>({});
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -68,11 +81,12 @@ export default function DashboardPage() {
 
       const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
       const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+      const todayStr = format(startOfDay(today), "yyyy-MM-dd");
 
       const [presenceResult, eventResult] = await Promise.all([
         supabase
           .from("presences")
-          .select("user_id, presence_date")
+          .select("user_id, presence_date, profiles(full_name, username)")
           .gte("presence_date", monthStart)
           .lte("presence_date", monthEnd),
         supabase
@@ -85,6 +99,7 @@ export default function DashboardPage() {
       const counts: Record<string, number> = {};
       const mine: Record<string, boolean> = {};
       const eventsMap: Record<string, boolean> = {};
+      const leaderboardMap: Record<string, LeaderboardEntry> = {};
 
       (presenceResult.data as PresenceRow[] | null)?.forEach((presence) => {
         counts[presence.presence_date] = (counts[presence.presence_date] ?? 0) + 1;
@@ -92,15 +107,33 @@ export default function DashboardPage() {
         if (userId && presence.user_id === userId) {
           mine[presence.presence_date] = true;
         }
+
+        // Calcola la classifica solo per le date fino a oggi
+        if (presence.presence_date <= todayStr) {
+          if (!leaderboardMap[presence.user_id]) {
+            leaderboardMap[presence.user_id] = {
+              user_id: presence.user_id,
+              full_name: presence.profiles?.full_name ?? null,
+              username: presence.profiles?.username ?? null,
+              count: 0,
+            };
+          }
+          leaderboardMap[presence.user_id].count += 1;
+        }
       });
 
       (eventResult.data as EventRow[] | null)?.forEach((event) => {
         eventsMap[event.event_date] = true;
       });
 
+      // Ordina la classifica in ordine decrescente
+      const leaderboardSorted = Object.values(leaderboardMap)
+        .sort((a, b) => b.count - a.count);
+
       setPresenceCounts(counts);
       setMyPresenceDays(mine);
       setSpecialEventDays(eventsMap);
+      setLeaderboard(leaderboardSorted);
       setLoading(false);
     }
 
@@ -231,6 +264,55 @@ export default function DashboardPage() {
 
             {loading && (
               <p className="mt-4 text-sm text-stone-500">Caricamento calendario...</p>
+            )}
+          </section>
+
+          <section className="rounded-[28px] border border-stone-200/80 bg-white/96 p-5 shadow-[0_10px_28px_rgba(28,25,23,0.05)]">
+            <div className="mb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
+                Classifica
+              </p>
+              <h2 className="text-lg font-semibold text-stone-900">
+                Più presenti in {format(currentMonth, "MMMM", { locale: it })}
+              </h2>
+              <p className="mt-1 text-xs text-stone-500">
+                Fino ad oggi ({format(today, "d MMM", { locale: it })})
+              </p>
+            </div>
+
+            {loading ? (
+              <p className="text-sm text-stone-500">Caricamento classifica...</p>
+            ) : leaderboard.length === 0 ? (
+              <p className="text-sm text-stone-500">Nessun dato di presenza per questo mese</p>
+            ) : (
+              <div className="space-y-2">
+                {leaderboard.map((entry, index) => (
+                  <div
+                    key={entry.user_id}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-stone-50 px-4 py-3 border border-stone-100 hover:bg-stone-100 transition"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-900 font-semibold text-sm flex-shrink-0">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-stone-900 truncate">
+                          {entry.full_name || "Utente"}
+                        </p>
+                        <p className="text-xs text-stone-500 truncate">
+                          @{entry.username || "sconosciuto"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-semibold text-stone-900">{entry.count}</p>
+                      <p className="text-xs text-stone-500">
+                        {entry.count === 1 ? "giorno" : "giorni"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
         </div>

@@ -9,8 +9,10 @@ import {
 } from "date-fns";
 import { it } from "date-fns/locale";
 import { useNavigate, useParams } from "react-router-dom";
+import { Thermometer } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
+import WeatherPanel from "../components/WeatherPanel";
 
 type PresenceRow = {
   id: string;
@@ -58,6 +60,8 @@ export default function CalendarPage() {
   const [myEventForDay, setMyEventForDay] = useState<EventRow | null>(null);
 
   const [eventType, setEventType] = useState<"compleanno" | "onomastico" | "cause_varie">("cause_varie");
+
+  const [showWeatherModal, setShowWeatherModal] = useState(false);
 
   const [swipingEventId, setSwipingEventId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -310,98 +314,110 @@ async function handleEventDeleteById(id: string) {
       <Navbar />
 
       <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.10),_transparent_32%),linear-gradient(to_bottom,_#faf7f2,_#f5f1ea)] px-4 pb-24 pt-4 sm:px-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          <section className="rounded-[28px] border border-stone-200/80 bg-white/95 p-5 shadow-[0_12px_32px_rgba(28,25,23,0.06)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+        <div className="mx-auto flex w-full max-w-7xl gap-6">
+          {/* Left column - Main content */}
+          <div className="flex flex-col gap-4 flex-1 min-w-0">
+            <section className="rounded-[28px] border border-stone-200/80 bg-white/95 p-5 shadow-[0_12px_32px_rgba(28,25,23,0.06)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/dashboard")}
+                    className="mb-3 inline-flex min-h-[44px] items-center rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                  >
+                    ← Torna al mese
+                  </button>
+
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
+                    Giorno selezionato
+                  </p>
+                  <h1 className="mt-1 text-2xl font-semibold capitalize text-stone-900">
+                    {dateLabel}
+                  </h1>
+                  <p className="mt-2 text-sm text-stone-600">
+                    Puoi sempre vedere chi era presente. La modifica della tua presenza è
+                    disponibile solo nei giorni feriali da oggi in avanti.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {isToday(parsedSelectedDate) && (
+                    <div className="rounded-2xl bg-emerald-100 px-3 py-2 text-xs font-medium text-emerald-900">
+                      Oggi
+                    </div>
+                  )}
+
+                  {hasSpecialEvents && (
+                    <div className="rounded-2xl bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900">
+                      Evento speciale
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5">
                 <button
                   type="button"
-                  onClick={() => navigate("/dashboard")}
-                  className="mb-3 inline-flex min-h-[44px] items-center rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                  onClick={handlePresenceToggle}
+                  disabled={saving || !userId || !canManagePresence}
+                  className={`w-full min-h-[52px] rounded-[20px] px-4 py-3 text-sm font-semibold shadow-sm transition ${
+                    amIPresent
+                      ? "bg-stone-900 text-white hover:bg-stone-800"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
-                  ← Torna al mese
+                  {!canManagePresence
+                    ? "Presenza non modificabile per questa data"
+                    : saving
+                    ? "Aggiornamento..."
+                    : amIPresent
+                    ? "Non ci sarò"
+                    : "Ci sarò"}
                 </button>
 
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
-                  Giorno selezionato
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold capitalize text-stone-900">
-                  {dateLabel}
-                </h1>
-                <p className="mt-2 text-sm text-stone-600">
-                  Puoi sempre vedere chi era presente. La modifica della tua presenza è
-                  disponibile solo nei giorni feriali da oggi in avanti.
-                </p>
-              </div>
+                {canManagePresence && userId && (
+                <button
+                  type="button"
+                  onClick={() => myEventForDay ? handleEventDelete() : setShowEventModal(true)}
+                  title={myEventForDay ? "Rimuovi evento speciale" : "Aggiungi evento speciale"}
+                  className={`flex min-h-[52px] min-w-[52px] items-center justify-center rounded-[20px] border text-lg transition ${
+                    myEventForDay
+                      ? "border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200"
+                      : "border-stone-200 bg-stone-50 text-stone-900 hover:bg-amber-50 hover:border-amber-300"
+                  }`}
+                  >
+                    ★
+      </button>
+    )}
 
-              <div className="flex flex-col gap-2">
-                {isToday(parsedSelectedDate) && (
-                  <div className="rounded-2xl bg-emerald-100 px-3 py-2 text-xs font-medium text-emerald-900">
-                    Oggi
-                  </div>
-                )}
-
-                {hasSpecialEvents && (
-                  <div className="rounded-2xl bg-amber-100 px-3 py-2 text-xs font-medium text-amber-900">
-                    Evento speciale
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <button
-                type="button"
-                onClick={handlePresenceToggle}
-                disabled={saving || !userId || !canManagePresence}
-                className={`w-full min-h-[52px] rounded-[20px] px-4 py-3 text-sm font-semibold shadow-sm transition ${
-                  amIPresent
-                    ? "bg-stone-900 text-white hover:bg-stone-800"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700"
-                } disabled:cursor-not-allowed disabled:opacity-50`}
-              >
-                {!canManagePresence
-                  ? "Presenza non modificabile per questa data"
-                  : saving
-                  ? "Aggiornamento..."
-                  : amIPresent
-                  ? "Non ci sarò"
-                  : "Ci sarò"}
-              </button>
-
-              {canManagePresence && userId && (
-              <button
-                type="button"
-                onClick={() => myEventForDay ? handleEventDelete() : setShowEventModal(true)}
-                title={myEventForDay ? "Rimuovi evento speciale" : "Aggiungi evento speciale"}
-                className={`flex min-h-[52px] min-w-[52px] items-center justify-center rounded-[20px] border text-lg transition ${
-                  myEventForDay
-                    ? "border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200"
-                    : "border-stone-200 bg-stone-50 text-stone-900 hover:bg-amber-50 hover:border-amber-300"
-                }`}
+                {/* Bottone meteo mobile */}
+                <button
+                  type="button"
+                  onClick={() => setShowWeatherModal(true)}
+                  title="Visualizza meteo"
+                  className="lg:hidden flex min-h-[52px] min-w-[52px] items-center justify-center rounded-[20px] border border-stone-200 bg-stone-50 text-stone-900 hover:bg-blue-50 hover:border-blue-300 transition"
                 >
-                  ★
-    </button>
-  )}
-            </div>
-          </section>
+                  <Thermometer className="w-5 h-5" />
+                </button>
+              </div>
+            </section>
 
-          <section className="rounded-[28px] border border-stone-200/80 bg-white/95 p-5 shadow-[0_10px_28px_rgba(28,25,23,0.05)]">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-stone-900">Presenti</h2>
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
-                {presences.length}
-              </span>
-            </div>
+            <section className="rounded-[28px] border border-stone-200/80 bg-white/95 p-5 shadow-[0_10px_28px_rgba(28,25,23,0.05)]">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-stone-900">Presenti</h2>
+                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
+                  {presences.length}
+                </span>
+              </div>
 
-            {loading ? (
-              <p className="text-sm text-stone-500">Caricamento presenti...</p>
-            ) : presences.length === 0 ? (
-              <p className="text-sm text-stone-500">
-                Nessun presente registrato per questa data.
-              </p>
-            ) : (
-              <div className="space-y-3">
+              {loading ? (
+                <p className="text-sm text-stone-500">Caricamento presenti...</p>
+              ) : presences.length === 0 ? (
+                <p className="text-sm text-stone-500">
+                  Nessun presente registrato per questa data.
+                </p>
+              ) : (
+                <div className="space-y-3">
                 {presences.map((presence) => {
                   const profile = presence.profiles;
 
@@ -515,12 +531,43 @@ async function handleEventDeleteById(id: string) {
               </div>
             )}
           </section>
+          </div>
+
+          {/* Right column - Weather */}
+          <aside className="hidden lg:flex flex-col gap-4 w-80 flex-shrink-0">
+            <WeatherPanel date={selectedDate} />
+          </aside>
         </div>
 
         {feedbackVisible && (
           <div className="presence-feedback" role="status" aria-live="polite">
             <div className="presence-feedback__icon">✓</div>
             <div className="presence-feedback__text">{feedbackText}</div>
+          </div>
+        )}
+
+        {/* Weather Modal Mobile */}
+        {showWeatherModal && (
+          <div
+            className="fixed inset-0 z-40 flex items-end justify-center bg-black/30 backdrop-blur-sm sm:items-center"
+            onClick={() => setShowWeatherModal(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-t-[28px] border border-stone-200 bg-white p-6 shadow-xl sm:rounded-[28px] max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-stone-900">Meteo 🌡️</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowWeatherModal(false)}
+                  className="text-stone-500 hover:text-stone-900"
+                >
+                  ✕
+                </button>
+              </div>
+              <WeatherPanel date={selectedDate} showTitle={false} />
+            </div>
           </div>
         )}
 

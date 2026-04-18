@@ -13,6 +13,11 @@ type InviteKeyRow = {
 
 export default function AdminPage() {
   const [keys, setKeys] = useState<InviteKeyRow[]>([]);
+  const [resetUsername, setResetUsername] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState("");
+  
 
   useEffect(() => {
     supabase
@@ -21,6 +26,54 @@ export default function AdminPage() {
       .order("created_at", { ascending: false })
       .then(({ data }) => setKeys((data ?? []) as InviteKeyRow[]));
   }, []);
+
+  async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setResetError("");
+    setResetMessage("");
+
+    const username = resetUsername.trim();
+    if (!username) {
+      setResetError("Inserisci uno username valido.");
+      return;
+    }
+
+    const resetUrl = import.meta.env.VITE_RESET_PASSWORD_FUNCTION_URL;
+    if (!resetUrl) {
+      setResetError("Endpoint reset password non configurato.");
+      return;
+    }
+
+    setResetLoading(true);
+
+    try {
+      const response = await fetch(resetUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password: "claudiooffri",
+        }),
+      });
+      //console.log("Reset password response:", { response});
+
+      const data = await response.json();
+      
+
+      if (!response.ok) {
+        throw new Error(data.error || "Errore durante il reset password.");
+      }
+
+      setResetMessage(`Password predefinita reimpostata per ${username}.`);
+      setResetUsername("");
+    } catch (error: any) {
+      setResetError(error?.message || "Errore durante il reset password.");
+    } finally {
+      setResetLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-stone-100 text-stone-800">
@@ -37,6 +90,36 @@ export default function AdminPage() {
         </div>
 
         <section className="rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-stone-900">
+            Reset password
+          </h3>
+          <p className="mt-2 text-sm text-stone-600">
+            Reimposta la password di un utente a <span className="font-semibold">claudiooffri</span> usando lo username.
+          </p>
+
+          <form onSubmit={handleResetPassword} className="mt-5 space-y-4">
+            <input
+              type="text"
+              value={resetUsername}
+              onChange={(e) => setResetUsername(e.target.value)}
+              placeholder="Username"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200"
+            />
+
+            {resetError && <p className="text-sm text-red-600">{resetError}</p>}
+            {resetMessage && <p className="text-sm text-emerald-700">{resetMessage}</p>}
+
+            <button
+              type="submit"
+              disabled={resetLoading}
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {resetLoading ? "Reimposta..." : "Reimposta password"}
+            </button>
+          </form>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-stone-200 bg-white/90 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-900">
             Chiavi invito
           </h3>

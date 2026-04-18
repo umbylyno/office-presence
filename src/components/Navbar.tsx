@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 
 type ProfileData = {
   full_name: string | null;
+  is_admin?: boolean | null;
 };
 
 export default function Navbar() {
@@ -13,6 +14,7 @@ export default function Navbar() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [visible, setVisible] = useState(true);
   const [fullName, setFullName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const lastScrollY = useRef(0);
 
@@ -50,16 +52,20 @@ export default function Navbar() {
 
       if (!user) {
         setFullName("");
+        setIsAdmin(false);
         return;
       }
 
       const { data } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, is_admin")
         .eq("id", user.id)
         .maybeSingle<ProfileData>();
 
       setFullName(data?.full_name ?? "");
+      setIsAdmin(!!data?.is_admin);
+
+
     }
 
     loadProfile();
@@ -134,13 +140,16 @@ export default function Navbar() {
             Dashboard
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/admin")}
-            className={`${navBase} ${isActive("/admin") ? navActive : navIdle}`}
-          >
-            Admin
-          </button>
+          
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => navigate("/admin")}
+              className={`${navBase} ${isActive("/admin") ? navActive : navIdle}`}
+            >
+              Admin
+            </button>
+          )}
 
           <button
             type="button"

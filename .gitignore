@@ -1,3 +1,25 @@
+# Dipendenze
+node_modules/
+.pnp
+.pnp.js
+
+# Build e output
+dist/
+build/
+.site/
+
+# Variabili d'ambiente (Contengono segreti come API keys)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Script di test e utility locali
+# ATTENZIONE: Questi file contengono la service_role key!
+generate-april-test-data.js
+add-fake-presences.js
+
 # Logs
 logs
 *.log
@@ -22,3 +44,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Local data and scripts patterns
+seed-*.js
+mock-*.json
+
+# Tooling and Build info
+.eslintcache
+*.tsbuildinfo
+*.timestamp-*
